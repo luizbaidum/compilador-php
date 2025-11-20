@@ -15,3 +15,5 @@ O compilador é capaz de executar os cálculos:
 20 - (10 * 20)
 
 A descrição completa sobre o uso está no próprio arquivo index.php como comentário.
+
+Código feito em parceria com deepseek.com
