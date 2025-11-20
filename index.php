@@ -1,121 +1,110 @@
 <?php
-	$teste = array('($dre ["beta"][52] + $dre["beta"]["53"])', '$dre["beta"][53]-$dre["beta"]["52"]');
-	$tokens = array();
+    // $teste deve ser alimentada com as strings que contenham as variáveis php (em string) que serão calculadas.
+    // As variáveis, por sua vez, devem ser entituladas como dre, exemplo: $dre.
+    // Se array as variáveis string também devem ser construídas obrigatóriamente com aspas duplas (").
+    $teste = array('($dre["beta"]["52"] + $dre["beta"]["53"] + $dre["beta"]["52"])', '$dre["beta"]["53"]-($dre["beta"]["52"]*$dre["beta"]["53"])'); // Funciona
+    // $teste = array('($dre[beta]["52"] + $dre["beta"]["53"]'); // Não funciona => Chave de array sem aspas duplas
+    // $teste = array('($dre["beta"]["52"] + $dre["beta"][53])'); // Não funciona => Chave de array sem aspas duplas
+    // $teste = array('$dre["beta"]["52"] + $dre["beta"]["53"]'); // Funciona
+    // $teste = array('($dre["beta"]["52"] + $dre["beta"]["53"]'); // Não funciona => falta fechar parênteses
 
-	foreach ($teste as $value)
-		$tokens[] = str_split($value, 1);
+    // Aqui cada variável real deve ser instanciada com o seu respectivo valor.
+    // As variáveis reais não precisam ter aspas duplas.
+	$dre["beta"][52] = 10;
+	$dre['beta']["53"] = 20;
 
-	echo '<pre>';
-	print_r($tokens);
+	$resultados = array();
 
-	//sinais
-	const CIFRAO = "$";
-	const ABRE_CHAVE = "[";
-	const FECHA_CHAVE = "]";
-	const INDICA_STR = "'";
-	const INDICA_STR_1 = '"';
-	const ADD = "+";
-	const DM = "-";
-	const MULT = "*";
-	const DIV = "/";
-	const ABRE_PAREN = "(";
-	const FECHA_PAREN =")";
-
-	$dre['beta']['52'] = 10;
-	$dre["beta"][53] = 20;
-
-	$result = "";
-	$posicao_completa = "";
-	$posicao_indice = array();
-	$confirmacoes = [
-		"aguarda_fim" 				=> false,
-		"aguarda_fechar_aspas" 		=> false,
-		"aguarda_fechar_chaves" 	=> false,
-		"aguarda_fechar_parenteses" => false
-	];
-
-	foreach ($tokens as $tk) {
-
-		$n = count($tk);
-		
-		for ($i = 0; $i < $n; $i++) {
-
-			if ($tk[$i] == " " || $tk[$i] == "  " || $tk[$i] == "")
-				continue;
-
-			if ($tk[$i] == CIFRAO)
-				$confirmacoes["aguarda_fim"] = true;
-
-			/*
-			 * Validações de caracteres não alfanuméricos
-			 */
-			if ($tk[$i] == FECHA_PAREN/* && $aguarda_fechar_parenteses*/)
-				$confirmacoes["aguarda_fechar_parenteses"] = false;
-				
-			if ($tk[$i] == ABRE_PAREN/* && !$aguarda_fechar_parenteses*/)
-				$confirmacoes["aguarda_fechar_parenteses"] = true;
-
-			if (($tk[$i] == INDICA_STR || $tk[$i] == INDICA_STR_1) && !$confirmacoes["aguarda_fechar_aspas"]) {
-				$confirmacoes["aguarda_fechar_aspas"] = true;
-			}
-
-			if (($tk[$i] == INDICA_STR || $tk[$i] == INDICA_STR_1)/* && $aguarda_fechar_aspas*/)
-				$confirmacoes["aguarda_fechar_aspas"] = false;
-
-			if ($tk[$i] == FECHA_CHAVE /*&& $aguarda_fechar_chaves*/)
-				$confirmacoes["aguarda_fechar_chaves"] = false;
-
-			if ($tk[$i] == ABRE_CHAVE /*&& !$aguarda_fechar_chaves*/)
-				$confirmacoes["aguarda_fechar_chaves"] = true;
-
-			if ($confirmacoes["aguarda_fim"] && $tk[$i] == CIFRAO && strlen($posicao_completa) > 1)  {
-
-				//$z = end($posicao_indice);
-				if (isset($tk[$i]) && $tk[$i] == ADD || $tk[$i] == DM || $tk[$i] == MULT || $tk[$i] == DIV)
-					$confirmacoes["aguarda_fim"] = false;
-				if (isset($tk[$i]) && $tk[$i] == CIFRAO)
-					$confirmacoes["aguarda_fim"] = false;
-
-				VarValidation($confirmacoes, $posicao_completa, $dre);
-				printWhatWeHave($posicao_completa, $dre);
-			}
-
-			$posicao_indice[$i] = $i;
-			$posicao_completa .= $tk[$i];
-		}
+	function extrairVariaveis($expressao) {
+		preg_match_all('/\$dre\["([^"]+)"\]\["([^"]+)"\]/', $expressao, $matches, PREG_SET_ORDER);
+		return $matches;
 	}
 
-	function printWhatWeHave($str_var, $dre)
-	{
-		var_dump($str_var);
-	}
+	function substituirVariaveis($expressao, $dre) {
+		$variaveis = extrairVariaveis($expressao);
 
-	function VarValidation($confirmations, $str_var, $dre)
-	{
-		$pendencias = array();
+		foreach ($variaveis as $var) {
+			$var_completa = $var[0]; // Ex: $dre["beta"]["52"]
+			$chave1 = $var[1];       // Ex: beta
+			$chave2 = $var[2];       // Ex: 52
 
-		foreach ($confirmations as $key => $value)
-			if ($value == 1)
-				$pendencias[] = $key;
-
-		if (!empty($pendencias)) {
-			echo "Pendências na construção da string: <br> <pre>";
-			foreach ($pendencias as $value)
-				echo $value . "<br>";
+			$valor = $dre[$chave1][$chave2];
+			$expressao = str_replace($var_completa, $valor, $expressao);
 		}
 
-		$clean_var = rtrim($str_var, ADD);
-		$clean_var = rtrim($clean_var, DM);
-		$clean_var = rtrim($clean_var, MULT);
-		$clean_var = rtrim($clean_var, DIV);
-		$clean_var = ltrim($clean_var, ABRE_PAREN);
-		$clean_var = rtrim($clean_var, FECHA_PAREN);
-
-		echo ' <br> ';
-		var_dump($clean_var);
-
-		$result = eval('return ' . $clean_var . ';');
-
-		if (!isset($result))
-			echo "Variável $clean_var não encontrada.";	
+		return $expressao;
 	}
+
+	function calcularParenteses($expressao) {
+		// Processa os parênteses mais internos primeiro
+		while (strpos($expressao, '(') !== false) {
+			$expressao = preg_replace_callback(
+				'/\(([^()]+)\)/',
+				function($matches) {
+					return calcularExpressaoSimples($matches[1]);
+				},
+				$expressao
+			);
+		}
+		return $expressao;
+	}
+
+	function calcularExpressaoSimples($expressao) {
+		// Remove espaços
+		$expressao = str_replace(' ', '', $expressao);
+
+		// Primeiro processa multiplicação e divisão
+		$expressao = preg_replace_callback(
+			'/([\d.]+)([\*\/])([\d.]+)/',
+			function($matches) {
+				$num1 = floatval($matches[1]);
+				$operador = $matches[2];
+				$num2 = floatval($matches[3]);
+
+				switch ($operador) {
+					case '*': return $num1 * $num2;
+					case '/': return $num2 != 0 ? $num1 / $num2 : 0;
+				}
+			},
+			$expressao
+		);
+
+		// Depois processa adição e subtração
+		preg_match_all('/([+\-]?[\d.]+)/', $expressao, $matches);
+		$numeros = $matches[1];
+
+		$resultado = 0;
+		foreach ($numeros as $numero) {
+			$resultado += floatval($numero);
+		}
+
+		return $resultado;
+	}
+
+	function calcularExpressao($expressao) {
+		// Remove o $ do início se existir
+		$expressao = ltrim($expressao, '$');
+
+		// Primeiro processa os parênteses
+		$expressao = calcularParenteses($expressao);
+
+		// Depois calcula a expressão resultante
+		return calcularExpressaoSimples($expressao);
+	}
+
+	foreach ($teste as $expressao) {
+		// Substitui variáveis por valores
+		$expressao_substituida = substituirVariaveis($expressao, $dre);
+
+		// Calcula o resultado
+		$resultado = calcularExpressao($expressao_substituida);
+		$resultados[] = $resultado;
+
+		echo "Expressão: $expressao <br>";
+		echo "Substituída: $expressao_substituida <br>";
+		echo "Resultado: $resultado <br><br>";
+	}
+
+	echo "Resultados finais: ";
+	print_r($resultados);
+?>
